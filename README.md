@@ -124,10 +124,11 @@ The Makefile provides the common workflows:
 make build      # Debug build
 make release    # Optimized executable
 make app        # Build and sign Vimshot.app
-make run        # Build and open Vimshot.app
-make dev        # Run with Swift Package Manager
-make install    # Install to ~/Applications
-make clean      # Remove generated build output
+make stop       # Stop any running Vimshot instance
+make run        # Build, stop stale copies, and open this bundle
+make dev        # Stop stale copies and run with Swift Package Manager
+make install    # Replace the copy in ~/Applications
+make clean      # Stop Vimshot and remove generated build output
 ```
 
 Override the installation directory when needed:
@@ -137,6 +138,16 @@ make install INSTALL_DIR=/Applications
 ```
 
 `build-app.sh` remains available for direct use. It uses an available local code-signing identity when possible, which keeps macOS permission grants stable between rebuilds.
+
+### Seeing an older interface?
+
+macOS identifies all Vimshot builds by the same bundle ID. If another copy is already running from `~/Applications` or a previous checkout, `open` may focus that process instead of launching your new build. Use:
+
+```sh
+make run
+```
+
+The target now stops every stale Vimshot process and opens the absolute path of the bundle it just built. `make clean` also stops the running app before deleting build output.
 
 ## Status
 
