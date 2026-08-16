@@ -11,6 +11,11 @@ private let carbonControl: UInt32 = UInt32(controlKey)
 private var requestedAccessibilityThisLaunch = false
 private var requestedScreenRecordingThisLaunch = false
 
+enum CaptureMode: Equatable {
+    case clipboardOnly
+    case clipboardAndFile
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var overlay: ScreenshotOverlay?
     private var statusItem: NSStatusItem!
@@ -340,8 +345,8 @@ final class ScreenshotOverlay {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         panel.hidesOnDeactivate = true
 
-        view.onFinish = { [weak self] selection in
-            self?.capture(selection)
+        view.onFinish = { [weak self] selection, mode in
+            self?.capture(selection, mode: mode)
         }
         view.onCancel = { [weak self] in
             self?.finish()
@@ -422,7 +427,7 @@ final class ScreenshotOverlay {
         }
     }
 
-    private func capture(_ selection: CGRect) {
+    private func capture(_ selection: CGRect, mode: CaptureMode) {
         // Screen Recording permission is required for the native capture.
         // End only this overlay before macOS opens its permission UI so the
         // menu-bar app remains usable and no dimmed screen is stranded.
@@ -445,13 +450,19 @@ final class ScreenshotOverlay {
             return
         }
 
-        let folder = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Pictures/Screenshots", isDirectory: true)
-        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let destination: URL
+        if mode == .clipboardAndFile {
+            let folder = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Pictures/Screenshots", isDirectory: true)
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
 
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd-HHmmss"
-        let destination = folder.appendingPathComponent("Vimshot-\(formatter.string(from: Date())).png")
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd-HHmmss-SSS"
+            destination = folder.appendingPathComponent("Vimshot-\(formatter.string(from: Date())).png")
+        } else {
+            destination = FileManager.default.temporaryDirectory
+                .appendingPathComponent("Vimshot-\(UUID().uuidString).png")
+        }
 
         // AppKit uses a bottom-left origin; screencapture uses the Quartz top-left origin.
         let quartzX = Int(rect.minX.rounded())
@@ -479,7 +490,12 @@ final class ScreenshotOverlay {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.writeObjects([image])
                 }
-                print(destination.path)
+                if mode == .clipboardOnly {
+                    try? FileManager.default.removeItem(at: destination)
+                    print("Copied screenshot to clipboard")
+                } else {
+                    print(destination.path)
+                }
                 self.finish()
             }
         }
@@ -574,7 +590,7 @@ final class ScreenshotOverlay {
 }
 
 final class SelectionView: NSView {
-    var onFinish: ((CGRect) -> Void)?
+    var onFinish: ((CGRect, CaptureMode) -> Void)?
     var onCancel: (() -> Void)?
     var onSnapWindow: (() -> Void)?
     var onSnapElement: (() -> Void)?
@@ -684,7 +700,11 @@ final class SelectionView: NSView {
         case 124: move(dx: amount, dy: 0) // right
         case 125: move(dx: 0, dy: -amount) // down
         case 126: move(dx: 0, dy: amount) // up
-        case 36, 76: confirm() // return / enter
+        case 36, 76:
+            let mode: CaptureMode = event.modifierFlags.contains(.shift)
+                ? .clipboardAndFile
+                : .clipboardOnly
+            confirm(mode: mode) // return / enter
         case 53: onCancel?() // escape
         default:
             switch key {
@@ -734,16 +754,60 @@ final class SelectionView: NSView {
         context.addLine(to: CGPoint(x: bounds.width, y: cursor.y))
         context.strokePath()
 
+        drawKeyboardHUD()
+    }
+
+    private func drawKeyboardHUD() {
         let prefix = countBuffer.isEmpty ? (pendingG ? "g" : "") : countBuffer
-        let status = anchor == nil
-            ? " Vimshot [\(prefix)]  h/j/k/l: move  H/J/K/L: edge  g1-g9: grid  w: window  e: element  Enter: set  Esc: cancel "
-            : " Vimshot [\(prefix)]  h/j/k/l: resize  H/J/K/L: edge  g1-g9: grid  o: swap corner  Enter: capture  Esc: cancel "
+        let hasSelection = anchor != nil || snappedSelection != nil
+        let status: String
+        if hasSelection {
+            status = "Vimshot [\(prefix)]  RESIZE  h/j/k/l · exact 20j · edges H/J/K/L · grid g1–g9\nEnter copy · ⇧Enter save + copy · o swap · r reset · Esc cancel"
+        } else {
+            status = "Vimshot [\(prefix)]  MOVE  h/j/k/l · exact 20j · edges H/J/K/L · grid g1–g9\nEnter set corner · w window · e element · Esc cancel"
+        }
+
+        let margin: CGFloat = bounds.width < 500 ? 8 : 16
+        let padding: CGFloat = bounds.width < 500 ? 9 : 12
+        let availableWidth = max(bounds.width - margin * 2, 180)
+        let hudWidth = min(availableWidth, 1_080)
+        let fontSize: CGFloat = bounds.width < 700 ? 10.5 : (bounds.width < 1_100 ? 11.5 : 13)
+
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineBreakMode = .byWordWrapping
+        paragraph.lineSpacing = 4
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .medium),
-            .foregroundColor: NSColor.white
+            .font: NSFont.monospacedSystemFont(ofSize: fontSize, weight: .medium),
+            .foregroundColor: NSColor.white,
+            .paragraphStyle: paragraph
         ]
         let text = NSAttributedString(string: status, attributes: attributes)
-        text.draw(at: CGPoint(x: 16, y: bounds.height - 34))
+        let contentWidth = max(hudWidth - padding * 2, 1)
+        let measured = text.boundingRect(
+            with: NSSize(width: contentWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading]
+        )
+        let hudHeight = ceil(measured.height) + padding * 2
+        let hudRect = NSRect(
+            x: margin,
+            y: max(margin, bounds.height - margin - hudHeight),
+            width: hudWidth,
+            height: hudHeight
+        )
+
+        let background = NSBezierPath(roundedRect: hudRect, xRadius: 10, yRadius: 10)
+        NSColor.black.withAlphaComponent(0.68).setFill()
+        background.fill()
+        NSColor.white.withAlphaComponent(0.13).setStroke()
+        background.lineWidth = 1
+        background.stroke()
+
+        text.draw(in: NSRect(
+            x: hudRect.minX + padding,
+            y: hudRect.minY + padding,
+            width: contentWidth,
+            height: ceil(measured.height)
+        ))
     }
 
     private enum Edge {
@@ -792,14 +856,14 @@ final class SelectionView: NSView {
         needsDisplay = true
     }
 
-    private func confirm() {
+    private func confirm(mode: CaptureMode) {
         if let snappedSelection {
             onFinish?(CGRect(
                 x: snappedSelection.minX + frame.minX,
                 y: snappedSelection.minY + frame.minY,
                 width: snappedSelection.width,
                 height: snappedSelection.height
-            ))
+            ), mode)
             return
         }
         if anchor == nil {
@@ -811,7 +875,7 @@ final class SelectionView: NSView {
                 y: min(anchor!.y, cursor.y) + frame.minY,
                 width: abs(cursor.x - anchor!.x),
                 height: abs(cursor.y - anchor!.y)
-            ))
+            ), mode)
         }
     }
 

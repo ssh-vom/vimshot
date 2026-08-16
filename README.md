@@ -12,7 +12,7 @@ Select regions, jump across the screen, and snap to UI elements without reaching
 
 </div>
 
-Vimshot lives in the menu bar and opens with a global shortcut. It uses Apple's native `screencapture` engine, saves each image to `~/Pictures/Screenshots`, and places it on the clipboard automatically.
+Vimshot lives in the menu bar and opens with a global shortcut. It uses Apple's native `screencapture` engine and lets each capture either go only to the clipboard or also be saved in `~/Pictures/Screenshots`.
 
 ## Preview
 
@@ -31,7 +31,7 @@ Vimshot lives in the menu bar and opens with a global shortcut. It uses Apple's 
 - **Fast jumps** to screen edges or a 3×3 grid
 - **Window snapping** without extra permissions
 - **UI-element snapping** through macOS Accessibility
-- **Native capture output** copied and saved automatically
+- **Explicit output modes** for clipboard-only or clipboard-and-file capture
 - **Menu-bar launcher** with a configurable global shortcut
 
 ## Install
@@ -58,8 +58,8 @@ To start it automatically, add `Vimshot.app` under **System Settings → General
 
 1. Press **⌥⇧S** or choose **Take Screenshot** from the menu-bar icon.
 2. Move the crosshair to the first corner and press `Enter`.
-3. Move to the opposite corner and press `Enter` again.
-4. The image is saved and copied to the clipboard.
+3. Move to the opposite corner.
+4. Press `Enter` to copy only, or `Shift+Enter` to copy and save.
 
 Choose **Set Keyboard Shortcut…** from the menu-bar icon to replace the default shortcut.
 
@@ -85,7 +85,8 @@ Choose **Set Keyboard Shortcut…** from the menu-bar icon to replace the defaul
 
 | Keys | Action |
 |---|---|
-| `Enter` | Set the first corner, then capture at the second corner |
+| `Enter` | Set the first corner; at the second corner, copy to clipboard only |
+| `Shift+Enter` | At the second corner, copy and save to `~/Pictures/Screenshots` |
 | `o` | Swap the fixed and active selection corners |
 | `r` | Reset the selection |
 | `Esc` / `q` | Cancel the current capture |
@@ -97,7 +98,7 @@ Choose **Set Keyboard Shortcut…** from the menu-bar icon to replace the defaul
 | `w` | Snap to the window beneath the crosshair |
 | `e` | Snap to the Accessibility UI element beneath the crosshair |
 
-After snapping, press `Enter` to capture.
+After snapping, press `Enter` to copy, or `Shift+Enter` to copy and save.
 
 ## Permissions
 
@@ -110,10 +111,11 @@ Window snapping with `w` does not require Accessibility access. If macOS opens S
 
 ## Output
 
-Every successful capture is:
+Every successful capture is written to the macOS clipboard as an image. When captured with `Shift+Enter`, it is also saved as:
 
-1. Saved as `~/Pictures/Screenshots/Vimshot-YYYY-MM-DD-HHMMSS.png`
-2. Written to the macOS clipboard as an image
+```text
+~/Pictures/Screenshots/Vimshot-YYYY-MM-DD-HHMMSS-SSS.png
+```
 
 ## Development
 
