@@ -46,8 +46,7 @@ Vimshot lives in the menu bar and opens with a global shortcut. It uses Apple's 
 ```sh
 git clone https://github.com/ssh-vom/vimshot.git
 cd vimshot
-./build-app.sh
-open Vimshot.app
+make run
 ```
 
 Vimshot appears as a camera icon in the menu bar. The default shortcut is **⌥⇧S**.
@@ -119,20 +118,25 @@ Every successful capture is written to the macOS clipboard as an image. When cap
 
 ## Development
 
-Run the executable directly during development:
+The Makefile provides the common workflows:
 
 ```sh
-swift build
-swift run vimshot
+make build      # Debug build
+make release    # Optimized executable
+make app        # Build and sign Vimshot.app
+make run        # Build and open Vimshot.app
+make dev        # Run with Swift Package Manager
+make install    # Install to ~/Applications
+make clean      # Remove generated build output
 ```
 
-Build the menu-bar application bundle:
+Override the installation directory when needed:
 
 ```sh
-./build-app.sh
+make install INSTALL_DIR=/Applications
 ```
 
-The build script uses an available local code-signing identity when possible, which keeps macOS permission grants stable between rebuilds.
+`build-app.sh` remains available for direct use. It uses an available local code-signing identity when possible, which keeps macOS permission grants stable between rebuilds.
 
 ## Status
 
