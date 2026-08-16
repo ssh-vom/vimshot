@@ -17,9 +17,9 @@ Vimshot lives in the menu bar and opens with a global shortcut. It uses Apple's 
 ## Preview
 
 <p align="center">
-  <img src="docs/assets/example-capture.png" alt="An image captured with Vimshot" width="860">
+  <img src="docs/assets/vimshot-in-use.png" alt="Vimshot selecting a code region with its keyboard overlay" width="860">
   <br>
-  <sub>A real capture produced by Vimshot.</sub>
+  <sub>Vimshot in selection mode: active region, crosshair, count prefix, and keyboard HUD.</sub>
 </p>
 
 ![Vimshot's g1 through g9 motion grid](docs/assets/motion-grid.svg)
