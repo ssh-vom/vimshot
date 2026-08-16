@@ -1,0 +1,6 @@
+.DS_Store
+.build/
+Vimshot.app/
+.pi/
+*.xcuserstate
+DerivedData/
