@@ -1,40 +1,137 @@
+<div align="center">
+
 # Vimshot
 
-A small macOS screenshot utility with Vim-style keyboard region selection. It uses Apple's native `/usr/sbin/screencapture` engine for the final capture, then copies the PNG to the clipboard and saves it in `~/Pictures/Screenshots`.
+**Keyboard-first screenshots for macOS.**
 
-## Build and run
+Select regions, jump across the screen, and snap to UI elements without reaching for the mouse.
+
+![macOS 13+](https://img.shields.io/badge/macOS-13%2B-111827?logo=apple&logoColor=white)
+![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white)
+![Status](https://img.shields.io/badge/status-early%20preview-8b5cf6)
+
+</div>
+
+Vimshot lives in the menu bar and opens with a global shortcut. It uses Apple's native `screencapture` engine, saves each image to `~/Pictures/Screenshots`, and places it on the clipboard automatically.
+
+## Preview
+
+<p align="center">
+  <img src="docs/assets/example-capture.png" alt="An image captured with Vimshot" width="860">
+  <br>
+  <sub>A real capture produced by Vimshot.</sub>
+</p>
+
+![Vimshot's g1 through g9 motion grid](docs/assets/motion-grid.svg)
+
+## Highlights
+
+- **Keyboard-only selection** with familiar `h`, `j`, `k`, and `l` motions
+- **Exact movement** such as `20j` or `150l`
+- **Fast jumps** to screen edges or a 3×3 grid
+- **Window snapping** without extra permissions
+- **UI-element snapping** through macOS Accessibility
+- **Native capture output** copied and saved automatically
+- **Menu-bar launcher** with a configurable global shortcut
+
+## Install
+
+### Requirements
+
+- macOS 13 or newer
+- Swift 5.9 or newer (Xcode or the Xcode Command Line Tools)
+
+### Build from source
 
 ```sh
-cd ~/projects/vimshot
+git clone https://github.com/ssh-vom/vimshot.git
+cd vimshot
 ./build-app.sh
 open Vimshot.app
 ```
 
-Vimshot now stays in the macOS menu bar. Its default global shortcut is **⌥⇧S**. Click the camera icon in the menu bar to take a screenshot or choose **Set Keyboard Shortcut…** to record a new shortcut by pressing it once.
+Vimshot appears as a camera icon in the menu bar. The default shortcut is **⌥⇧S**.
 
-For it to always be available, add `Vimshot.app` to **System Settings → General → Login Items**.
+To start it automatically, add `Vimshot.app` under **System Settings → General → Login Items**.
 
-The first use of `e` may ask for macOS Accessibility permission. `w` does not require Accessibility permission.
+## Usage
 
-## Keys
+1. Press **⌥⇧S** or choose **Take Screenshot** from the menu-bar icon.
+2. Move the crosshair to the first corner and press `Enter`.
+3. Move to the opposite corner and press `Enter` again.
+4. The image is saved and copied to the clipboard.
 
-| Key | Action |
+Choose **Set Keyboard Shortcut…** from the menu-bar icon to replace the default shortcut.
+
+## Motions
+
+### Move and jump
+
+| Keys | Action |
 |---|---|
-| `h`/`j`/`k`/`l`, arrows | Move the crosshair by 10 pixels |
-| `20j`, `10l` | Move exactly 20 or 10 pixels (number row or numpad) |
-| `H`/`J`/`K`/`L` | Jump to the left/bottom/top/right screen edge |
-| `gh`/`gj`/`gk`/`gl` | Alternate directional edge jumps |
-| `Ctrl` + movement | Fine movement (1 pixel) |
-| `Option` + movement | Fast movement (100 pixels) |
-| `g1` … `g9` | Jump to a 3×3 screen grid (`g5` is center) |
-| `gg` / `G` | Jump to top-left / bottom-right |
-| `0` / `$` | Jump to left / right edge |
-| `m` | Jump to center |
-| `o` | Swap the active selection corner |
-| `Enter` | Set the first corner, then capture |
+| `h` / `j` / `k` / `l` | Move left / down / up / right by 10 pixels |
+| Arrow keys | Move in the corresponding direction |
+| `20j`, `150l` | Move by the exact pixel count |
+| `Ctrl` + motion | Move by 1 pixel |
+| `Option` + motion | Move by 100 pixels |
+| `H` / `J` / `K` / `L` | Jump to the left / bottom / top / right edge |
+| `gh` / `gj` / `gk` / `gl` | Alternate directional edge jumps |
+| `g1` … `g9` | Jump to a position on the 3×3 screen grid |
+| `gg` / `G` | Jump to the top-left / bottom-right corner |
+| `0` / `$` | Jump to the left / right edge |
+| `m` | Jump to the center |
+
+### Select and capture
+
+| Keys | Action |
+|---|---|
+| `Enter` | Set the first corner, then capture at the second corner |
+| `o` | Swap the fixed and active selection corners |
+| `r` | Reset the selection |
+| `Esc` / `q` | Cancel the current capture |
+
+### Snap
+
+| Keys | Action |
+|---|---|
 | `w` | Snap to the window beneath the crosshair |
 | `e` | Snap to the Accessibility UI element beneath the crosshair |
-| `r` | Reset |
-| `Esc` / `q` | Cancel |
 
-The screenshot is saved automatically and copied to the clipboard after capture.
+After snapping, press `Enter` to capture.
+
+## Permissions
+
+Vimshot asks only when a feature needs permission:
+
+- **Screen Recording** — required by macOS for the final screenshot
+- **Accessibility** — required only for `e` element snapping
+
+Window snapping with `w` does not require Accessibility access. If macOS opens System Settings, the active overlay closes while Vimshot remains available in the menu bar. Approve the permission, then start another capture. macOS may require Vimshot to be reopened once after approval.
+
+## Output
+
+Every successful capture is:
+
+1. Saved as `~/Pictures/Screenshots/Vimshot-YYYY-MM-DD-HHMMSS.png`
+2. Written to the macOS clipboard as an image
+
+## Development
+
+Run the executable directly during development:
+
+```sh
+swift build
+swift run vimshot
+```
+
+Build the menu-bar application bundle:
+
+```sh
+./build-app.sh
+```
+
+The build script uses an available local code-signing identity when possible, which keeps macOS permission grants stable between rebuilds.
+
+## Status
+
+Vimshot is an early preview. The core capture, menu-bar shortcut, motion, snapping, and permission flows work, but the motion model and interface are still being refined.

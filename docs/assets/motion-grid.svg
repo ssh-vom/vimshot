@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420" role="img" aria-label="Vimshot 3 by 3 jump grid">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#171527"/>
+      <stop offset="1" stop-color="#24213a"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+  </defs>
+  <rect width="900" height="420" rx="22" fill="url(#bg)"/>
+  <text x="42" y="55" fill="#f4f1ff" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="25" font-weight="700">Jump anywhere with g1–g9</text>
+  <text x="42" y="84" fill="#aaa4c8" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="15">The number layout follows the screen from top-left to bottom-right.</text>
+  <g transform="translate(42 112)" filter="url(#shadow)">
+    <rect width="816" height="266" rx="14" fill="#100f1b" stroke="#3b3754"/>
+    <path d="M272 0V266M544 0V266M0 88.67H816M0 177.33H816" stroke="#37334d" stroke-width="1.5"/>
+    <g fill="#8ee65c" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="23" font-weight="700" text-anchor="middle">
+      <text x="136" y="54">g1</text><text x="408" y="54">g2</text><text x="680" y="54">g3</text>
+      <text x="136" y="143">g4</text><text x="408" y="143">g5</text><text x="680" y="143">g6</text>
+      <text x="136" y="232">g7</text><text x="408" y="232">g8</text><text x="680" y="232">g9</text>
+    </g>
+    <g fill="#77718f" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" text-anchor="middle">
+      <text x="136" y="73">top-left</text><text x="408" y="73">top</text><text x="680" y="73">top-right</text>
+      <text x="136" y="162">left</text><text x="408" y="162">center</text><text x="680" y="162">right</text>
+      <text x="136" y="251">bottom-left</text><text x="408" y="251">bottom</text><text x="680" y="251">bottom-right</text>
+    </g>
+    <circle cx="408" cy="133" r="27" fill="none" stroke="#8ee65c" stroke-width="2" opacity=".35"/>
+  </g>
+</svg>
