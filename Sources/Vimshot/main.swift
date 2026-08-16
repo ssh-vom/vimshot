@@ -603,7 +603,9 @@ final class SelectionView: NSView {
     private let step: CGFloat = 10
 
     var cursorInScreenCoordinates: CGPoint {
-        CGPoint(x: cursor.x + frame.minX, y: cursor.y + frame.minY)
+        guard let window else { return cursor }
+        let pointInWindow = convert(cursor, to: nil)
+        return window.convertPoint(toScreen: pointInWindow)
     }
 
     override var acceptsFirstResponder: Bool { true }
@@ -767,11 +769,15 @@ final class SelectionView: NSView {
             status = "Vimshot [\(prefix)]  MOVE  h/j/k/l · exact 20j · edges H/J/K/L · grid g1–g9\nEnter set corner · w window · e element · Esc cancel"
         }
 
-        let margin: CGFloat = bounds.width < 500 ? 8 : 16
-        let padding: CGFloat = bounds.width < 500 ? 9 : 12
-        let availableWidth = max(bounds.width - margin * 2, 180)
+        // Size and position the HUD inside the usable area of the display
+        // containing the cursor. This avoids the menu bar, Dock, MacBook
+        // notch, and incorrect sizing from a multi-display virtual desktop.
+        let safeBounds = safeDrawingBoundsForCursor()
+        let margin: CGFloat = safeBounds.width < 500 ? 8 : 16
+        let padding: CGFloat = safeBounds.width < 500 ? 9 : 12
+        let availableWidth = max(safeBounds.width - margin * 2, 180)
         let hudWidth = min(availableWidth, 1_080)
-        let fontSize: CGFloat = bounds.width < 700 ? 10.5 : (bounds.width < 1_100 ? 11.5 : 13)
+        let fontSize: CGFloat = safeBounds.width < 700 ? 10.5 : (safeBounds.width < 1_100 ? 11.5 : 13)
 
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineBreakMode = .byWordWrapping
@@ -789,10 +795,10 @@ final class SelectionView: NSView {
         )
         let hudHeight = ceil(measured.height) + padding * 2
         let hudRect = NSRect(
-            x: margin,
-            y: max(margin, bounds.height - margin - hudHeight),
+            x: safeBounds.minX + margin,
+            y: max(safeBounds.minY + margin, safeBounds.maxY - margin - hudHeight),
             width: hudWidth,
-            height: hudHeight
+            height: min(hudHeight, safeBounds.height - margin * 2)
         )
 
         let background = NSBezierPath(roundedRect: hudRect, xRadius: 10, yRadius: 10)
@@ -806,8 +812,32 @@ final class SelectionView: NSView {
             x: hudRect.minX + padding,
             y: hudRect.minY + padding,
             width: contentWidth,
-            height: ceil(measured.height)
+            height: min(ceil(measured.height), hudRect.height - padding * 2)
         ))
+    }
+
+    private func safeDrawingBoundsForCursor() -> CGRect {
+        guard let window else { return bounds }
+        let screenPoint = cursorInScreenCoordinates
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(screenPoint) })
+                ?? window.screen
+                ?? NSScreen.main else {
+            return bounds
+        }
+
+        let screenFrame = screen.frame
+        let visible = screen.visibleFrame
+        let insets = screen.safeAreaInsets
+        let minX = max(visible.minX, screenFrame.minX + insets.left)
+        let maxX = min(visible.maxX, screenFrame.maxX - insets.right)
+        let minY = max(visible.minY, screenFrame.minY + insets.bottom)
+        let maxY = min(visible.maxY, screenFrame.maxY - insets.top)
+        guard maxX > minX, maxY > minY else { return bounds }
+
+        let safeScreenRect = NSRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+        let safeWindowRect = window.convertFromScreen(safeScreenRect)
+        let safeViewRect = convert(safeWindowRect, from: nil).intersection(bounds)
+        return safeViewRect.isNull || safeViewRect.isEmpty ? bounds : safeViewRect
     }
 
     private enum Edge {
