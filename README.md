@@ -60,7 +60,7 @@ To start it automatically, add `Vimshot.app` under **System Settings → General
 3. Move to the opposite corner.
 4. Press `Enter` to copy only, or `Shift+Enter` to copy and save.
 
-Choose **Set Keyboard Shortcut…** from the menu-bar icon to replace the default shortcut.
+Choose **Set Keyboard Shortcut…** from the menu-bar icon to replace the default shortcut. Triggering the shortcut while a capture is already active resets that capture, and switching away from Vimshot cancels the current overlay cleanly.
 
 ## Motions
 

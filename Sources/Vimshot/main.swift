@@ -80,11 +80,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func startCapture() {
-        guard overlay == nil else { return }
-        overlay = ScreenshotOverlay { [weak self] in
+        // A hidden or interrupted overlay must never block future captures.
+        // Invoking the shortcut again resets any existing session first.
+        overlay?.cancel()
+        overlay = nil
+
+        let session = ScreenshotOverlay { [weak self] in
             self?.overlay = nil
         }
-        overlay?.start()
+        overlay = session
+        session.start()
     }
 
     @objc private func configureShortcut() {
@@ -320,7 +325,6 @@ final class ScreenshotOverlay {
     private let onExit: () -> Void
     private var localKeyMonitor: Any?
     private var appObservers: [NSObjectProtocol] = []
-    private var isPaused = false
     private var isFinished = false
 
     init(onExit: @escaping () -> Void) {
@@ -366,14 +370,9 @@ final class ScreenshotOverlay {
             object: NSApp,
             queue: .main
         ) { [weak self] _ in
-            self?.pause()
-        })
-        appObservers.append(center.addObserver(
-            forName: NSApplication.didBecomeActiveNotification,
-            object: NSApp,
-            queue: .main
-        ) { [weak self] _ in
-            self?.resume()
+            // Accessory/menu-bar apps do not reliably receive a matching
+            // activation event. Cancel instead of retaining a hidden session.
+            self?.finish()
         })
 
         NSApp.activate(ignoringOtherApps: true)
@@ -392,17 +391,8 @@ final class ScreenshotOverlay {
         view.focusCursor()
     }
 
-    private func pause() {
-        guard !isFinished else { return }
-        isPaused = true
-        panel.orderOut(nil)
-    }
-
-    private func resume() {
-        guard isPaused, !isFinished else { return }
-        isPaused = false
-        panel.makeKeyAndOrderFront(nil)
-        panel.makeFirstResponder(view)
+    func cancel() {
+        finish()
     }
 
     private func finish() {
@@ -432,7 +422,7 @@ final class ScreenshotOverlay {
         // End only this overlay before macOS opens its permission UI so the
         // menu-bar app remains usable and no dimmed screen is stranded.
         guard CGPreflightScreenCaptureAccess() else {
-            pause()
+            panel.orderOut(nil)
             if !requestedScreenRecordingThisLaunch {
                 requestedScreenRecordingThisLaunch = true
                 _ = CGRequestScreenCaptureAccess()
@@ -478,20 +468,37 @@ final class ScreenshotOverlay {
                 destination.path
             ]
 
+            var captureSucceeded = false
             do {
+                let completed = DispatchSemaphore(value: 0)
+                process.terminationHandler = { _ in completed.signal() }
                 try process.run()
-                process.waitUntilExit()
+
+                if completed.wait(timeout: .now() + 15) == .timedOut {
+                    fputs("vimshot: screencapture timed out\n", stderr)
+                    process.terminate()
+                } else {
+                    captureSucceeded = process.terminationStatus == 0
+                }
             } catch {
                 fputs("vimshot: unable to run screencapture: \(error)\n", stderr)
             }
 
             DispatchQueue.main.async {
-                if let image = NSImage(contentsOf: destination) {
+                var copied = false
+                if captureSucceeded, let image = NSImage(contentsOf: destination) {
                     NSPasteboard.general.clearContents()
-                    NSPasteboard.general.writeObjects([image])
+                    copied = NSPasteboard.general.writeObjects([image])
                 }
+
                 if mode == .clipboardOnly {
                     try? FileManager.default.removeItem(at: destination)
+                }
+
+                if !captureSucceeded || !copied {
+                    NSSound.beep()
+                    fputs("vimshot: capture failed\n", stderr)
+                } else if mode == .clipboardOnly {
                     print("Copied screenshot to clipboard")
                 } else {
                     print(destination.path)
@@ -522,7 +529,7 @@ final class ScreenshotOverlay {
             // End only this capture session before opening Settings. Vimshot
             // remains alive in the menu bar, so there can never be a stranded
             // full-screen overlay behind the permission window.
-            pause()
+            panel.orderOut(nil)
             if !requestedAccessibilityThisLaunch {
                 requestedAccessibilityThisLaunch = true
                 let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
